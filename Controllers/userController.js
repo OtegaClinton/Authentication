@@ -5,6 +5,7 @@ const sendMail=require("../helpers/email");
 const html = require("../helpers/html");
 const jwt =require("jsonwebtoken");
 const cloudinary = require("../helpers/cloudinary");
+const fileSystem = require("fs");
 
 exports.createUser = async (req,res)=>{
     try {
@@ -13,6 +14,11 @@ exports.createUser = async (req,res)=>{
 
         const bcryptPassword = await bcrypt.genSaltSync(10);
         const hashedPassword = await bcrypt.hashSync(Password,bcryptPassword);
+
+        if (!req.file) {
+            return res.status(400).json({ message: 'Profile picture is required' });
+        }
+
         const cloudProfile = await cloudinary.uploader.upload(req.file.path, { folder: "users_dp" }, (error, data) => {
             if (error) {
                 return res.status(400).json({
@@ -39,7 +45,16 @@ exports.createUser = async (req,res)=>{
             }
         }
 
+
         const createdUser = await userModel.create(data);
+
+        fileSystem.unlink(req.file.path,(error)=>{
+            if(error){
+                return res.status(400).json({
+                    message:"unable to delete users profile picture",error
+                })            
+            }
+        });
 
         const userToken = jwt.sign({id:createdUser._id, email:createdUser.email}, process.env.jwtSecret, {expiresIn: "3 minutes"});
 
@@ -143,7 +158,7 @@ exports.logIn = async (req,res) =>{
             })
         }
 
-       const user= await jwt.sign({Firstname:findWithEmail.Firstname},process.env.jwtSecret,{expiresIn: "2 Minutes"});
+       const user= await jwt.sign({id:findWithEmail._id},process.env.jwtSecret,{expiresIn: "7 Minutes"});
 
        const  {isVerified,PhoneNumber,createdAt,updatedAt,__v,isAdmin,isSuperAdmin, ...others} = findWithEmail._doc;
 
@@ -215,3 +230,72 @@ exports.makeSuperAdmin= async(req,res)=>{
         
     }
 }
+
+
+exports.updatePicture = async (req, res) => {
+    try {
+        // Extract token from headers
+        const userToken = req.headers.authorization.split(" ")[1];
+
+        // Check if file is provided
+        if (!req.file) {
+            return res.status(400).json({ message: "No profile picture selected" });
+        }
+
+        // Verify token
+        jwt.verify(userToken, process.env.jwtSecret, async (error, newUser) => {
+            if (error) {
+                return res.status(400).json({ message: "Could not authenticate" });
+            } else {
+                const userId = newUser.id;
+
+                // Find user to get the current profile picture
+                const user = await userModel.findById(userId);
+                if (!user) {
+                    return res.status(404).json({ message: "User not found" });
+                }
+
+                // Save the current profile picture details
+                const formerImage = {
+                    pictureId: user.profilePicture.pictureId,
+                    pictureUrl: user.profilePicture.pictureUrl
+                };
+
+                // Upload new profile picture to Cloudinary
+                const cloudProfile = await cloudinary.uploader.upload(req.file.path, { folder: "users_dp" },{new:true});
+
+                // Prepare update data
+                const pictureUpdate = {
+                    profilePicture: {
+                        pictureId: cloudProfile.public_id,
+                        pictureUrl: cloudProfile.secure_url,
+                        formerImages: [...user.profilePicture.formerImages, formerImage] // Save old picture details
+                    }
+                };
+
+                // Update user profile picture
+                const updatedUser = await userModel.findByIdAndUpdate(userId, pictureUpdate, { new: true });
+
+                //delete the picture from media folder
+                fileSystem.unlink(req.file.path,(error)=>{
+                    if(error){
+                        return res.status(400).json({
+                            message:"unable to delete users profile picture",error
+                        })            
+                    }
+                });
+
+                // Return success response
+                return res.status(200).json({
+                    message: "User image successfully changed",
+                    data: updatedUser.profilePicture
+                });
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: error.message
+        });
+    }
+};

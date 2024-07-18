@@ -38,9 +38,15 @@ const userSchema = new mongoose.Schema({
         default: false
     },
 
-    profilePicture:{
-        pictureUrl: String,
-        pictureId:String
+    profilePicture: {
+        pictureId: { type: String },
+        pictureUrl: { type: String},
+        formerImages: [
+            {
+                pictureId: { type: String },
+                pictureUrl: { type: String }
+            }
+        ]
     }
 }, {timestamps: true});
 
