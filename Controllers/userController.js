@@ -82,36 +82,74 @@ exports.createUser = async (req,res)=>{
 };
 
 
-exports.verifyEmail = async(req,res) => {
+// exports.verifyEmail = async(req,res) => {
+//     try {
+//         const id = req.params.id;
+//         const findUser= await userModel.findById(id);
+//          await jwt.verify(req.params.token, process.env.jwtSecret,(error)=>{
+//             if(error){
+//                 const link = `${req.protocol}://${req.get("host")}/api/v1/newemail/${findUser._id}`
+//              sendMail({ subject : ` Kindly Verify your mail`,
+//                 email:findUser.email,
+//                 html: html(link,findUser.Firstname)
+
+//              })
+//              return res.json(`This link has expired,kindly check your email link`)
+
+//             }else{
+//                 if(findUser.isVerified == true){
+//                     return res.status(400).json('your account has already been verified')
+//                 }
+//                 userModel.findByIdAndUpdate(id,{isVerified:true});
+//                 res.status(200).json(`you have been verified,kindly go ahead and log in`)
+//             }
+//         })
+        
+//     } catch (error) {
+//         res.status(500).json({
+//             message:error.message
+//         })
+        
+//     }
+// }
+
+
+
+exports.verifyEmail = async (req, res) => {
     try {
         const id = req.params.id;
-        const findUser= await userModel.findByIdA(id);
-         await jwt.verify(req.params.token, process.env.jwtSecret,(error)=>{
-            if(error){
-                const link = `${req.protocol}://${req.get("host")}/api/v1/newemail/${findUser._id}`
-             sendMail({ subject : ` Kindly Verify your mail`,
-                email:findUser.email,
-                html: html(link,findUser.Firstname)
+        const token = req.params.token;
+        const findUser = await userModel.findById(id);
 
-             })
-             return res.json(`This link has expired,kindly check your email link`)
+        if (!findUser) {
+            return res.status(404).json('User not found');
+        }
 
-            }else{
-                if(findUser.isVerified == true){
-                    return res.status(400).json('your account has already been verified')
+        jwt.verify(token, process.env.jwtSecret, async (error) => {
+            if (error) {
+                const link = `${req.protocol}://${req.get("host")}/api/v1/newemail/${findUser._id}`;
+                await sendMail({
+                    subject: `Kindly Verify your mail`,
+                    email: findUser.Email,
+                    html: html(link, findUser.Firstname)
+                });
+                return res.status(400).json(`This link has expired, kindly check your email for a new link`);
+            } else {
+                if (findUser.isVerified) {
+                    return res.status(400).json('Your account has already been verified');
                 }
-                userModel.findByIdAndUpdate(id,{isVerified:true});
-                res.status(200).json(`you have been verified,kindly go ahead and log in`)
+                await userModel.findByIdAndUpdate(id, { isVerified: true });
+                // return res.status(200).json(`You have been verified, kindly go ahead and log in`);
+                return res.redirect('/api/v1/logIn');
             }
-        })
-        
+        });
+
     } catch (error) {
-        res.status(500).json({
-            message:error.message
-        })
-        
+        return res.status(500).json({
+            message: error.message
+        });
     }
-}
+};
 
 
 exports.newEmail = async (req,res) => {
@@ -134,7 +172,7 @@ exports.newEmail = async (req,res) => {
         
     }
 
-}
+};
 
 
 exports.logIn = async (req,res) =>{
@@ -158,7 +196,7 @@ exports.logIn = async (req,res) =>{
             })
         }
 
-       const user= await jwt.sign({id:findWithEmail._id},process.env.jwtSecret,{expiresIn: "7 Minutes"});
+       const user= await jwt.sign({id:findWithEmail._id},process.env.jwtSecret,{expiresIn: "10 Minutes"});
 
        const  {isVerified,PhoneNumber,createdAt,updatedAt,__v,isAdmin,isSuperAdmin, ...others} = findWithEmail._doc;
 
