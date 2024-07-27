@@ -22,6 +22,9 @@ app.use((error, req, res, next) => {
     next(); 
 });  
 
+app.get('/api/v1/logIn', (req, res) => {
+    res.send('Login Page'); 
+});
 
 
 const Port = process.env.PORT || 1313

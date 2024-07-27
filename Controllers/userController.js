@@ -139,8 +139,7 @@ exports.verifyEmail = async (req, res) => {
                     return res.status(400).json('Your account has already been verified');
                 }
                 await userModel.findByIdAndUpdate(id, { isVerified: true });
-                // return res.status(200).json(`You have been verified, kindly go ahead and log in`);
-                return res.redirect('/api/v1/logIn');
+                return res.redirect('/api/v1/logIn'); 
             }
         });
 
@@ -150,6 +149,7 @@ exports.verifyEmail = async (req, res) => {
         });
     }
 };
+
 
 
 exports.newEmail = async (req,res) => {
@@ -168,7 +168,7 @@ exports.newEmail = async (req,res) => {
     } catch (error) {
         res.status(500).json({
             message:error.message
-        })
+        });
         
     }
 
