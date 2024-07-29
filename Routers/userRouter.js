@@ -8,7 +8,9 @@ const uploader = require("../helpers/multer")
 router.post("/createuser",uploader.single("profilePicture"),createUser);
 
 router.get("/verify/:id/:token",verifyEmail);
-
+router.get("/",(req,res)=>{
+    res.status(200).json("welcome to my api")
+})
 router.get("/newemail/:id",newEmail);
 
 

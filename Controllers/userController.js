@@ -154,7 +154,7 @@ exports.verifyEmail = async (req, res) => {
 
 exports.newEmail = async (req,res) => {
     try {
-        const user = await userModel.findById(re.params.id);
+        const user = await userModel.findById(req.params.id);
         const userToken = jwt.sign({id:user._id,email:user.Email},process.env.jwtSecret, {expiresIn: "3 Minutes"});
 
         const  reverifyLink =`${req.protocol}://${req.get("host")}/api/v1/${user._id}/${userToken}`;
@@ -163,7 +163,11 @@ exports.newEmail = async (req,res) => {
             subject:"Kindly verify your email",
             email: user.Email,
             html: html(reverifyLink, user.Firstname)
-        })
+        });
+
+        res.status(200).json({
+            message: "Verification email sent"
+        });
         
     } catch (error) {
         res.status(500).json({
